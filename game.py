@@ -11,7 +11,8 @@ BLACK = (0,) * 3
 
 class Game:
 
-
+    
+    place_sound = pygame.mixer.Sound("pop_sound.wav")
 
     class Square(pygame.sprite.Sprite):
 
@@ -25,7 +26,11 @@ class Game:
             self.hovered_on = False
         
 
+        
 
+        def update_color(self,color):
+            self.color = color
+            self.image.fill(color)
 
 
         
@@ -69,8 +74,12 @@ class Game:
             for row in range(len(self.board)):
                 for col in range(len(self.board[0])):
                     self.board[row][col].draw(screen)
-            
+        
 
+        def update_color(self,row,col,color):
+            self.board[row][col].update_color(color)
+        def get_color(self,row,col):
+            return self.board[row][col].color
 
     BGCOLOR = (25,56,25)
     COLORS = [(0,150,200),(255,25,50),(125,200,0),(255,255,35),(150,0,150),(255,125,0)]
@@ -87,12 +96,19 @@ class Game:
         self.title_text = self.title_font.render("Flood it",True,WHITE)
         self.instructions_text = self.text_font.render("Fill the entire board with the same color with 25 flood fills or less.",True,WHITE)
 
+        
+
+        self.moves = 0
+
 
         self.board,self.screen_width = self._generate_board()
         self.screen = pygame.display.set_mode((self.screen_width,self.screen_height))
         self.title_text_rect = self.title_text.get_rect(center=(self.screen_width//2,edge_gap + self.title_text.get_height()//2))
         self.instructions_text_rect = self.instructions_text.get_rect(center=(self.screen_width//2,edge_gap * 2 + self.title_text.get_height() + self.instructions_text.get_height()//2))
-        self._generate_color_picker_squares()
+        self.move_text = self.title_font.render("0/25",True,WHITE)
+        y= self._generate_color_picker_squares()
+        self.move_text_y = y
+        self.move_text_rect = self.move_text.get_rect(center=(self.screen_width//2,y+  5+ self.move_text.get_height()//2 ))
         self._play()
     
 
@@ -101,7 +117,7 @@ class Game:
 
 
         
-        topleft_y = 5 * self.edge_gap +60+ self.title_text.get_height()
+        topleft_y = 5 * self.edge_gap +100+ self.title_text.get_height()
         square_width = (self.screen_height - topleft_y - self.edge_gap)//self.cols
         #square_width = (self.screen_width - 4 * self.edge_gap)//self.cols
         screen_width =  self.edge_gap * 2+ square_width * self.cols
@@ -121,6 +137,51 @@ class Game:
             self.color_pickers.add(square)
 
 
+        return top_y + 60
+
+
+
+    def _update_moves_text(self):
+        self.move_text = self.title_font.render(f"{self.moves}/25",True,WHITE)
+
+
+        self.move_text_rect = self.move_text.get_rect(center=(self.screen_width//2,self.move_text_y+  5+ self.move_text.get_height()//2 ))
+
+    
+    def flood_fill(self,color):
+
+        
+
+        matching_color = self.board.get_color(0,0)
+        print(matching_color)
+        
+
+        in_bounds = lambda row,col: 0 <= row < self.rows and 0 <= col < self.cols
+
+        def _flood_fill(row,col):
+            
+
+            visited.add((row,col))
+            self.board.update_color(row,col,color)
+
+        
+
+
+            for x_diff,y_diff in ((0,1),(0,-1),(1,0),(-1,0)):
+                neighbor_row,neighbor_col = row + x_diff,col + y_diff
+                if in_bounds(neighbor_row,neighbor_col) and (neighbor_row,neighbor_col) not in visited and self.board.get_color(neighbor_row,neighbor_col)== matching_color:
+                    _flood_fill(neighbor_row,neighbor_col)
+
+
+        visited = set()
+        _flood_fill(0,0)
+
+
+
+
+
+
+
 
 
 
@@ -134,6 +195,16 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    point = pygame.mouse.get_pos()
+
+                    for color_picker in self.color_pickers:
+                        if color_picker.clicked_on(point):
+                            self.place_sound.play()
+                            self.flood_fill(color_picker.color)
+                            self.moves += 1
+                            self._update_moves_text()
+
 
             
 
@@ -141,6 +212,7 @@ class Game:
             self.screen.fill(Game.BGCOLOR)
             self.screen.blit(self.title_text,self.title_text_rect)
             self.screen.blit(self.instructions_text,self.instructions_text_rect)
+            self.screen.blit(self.move_text,self.move_text_rect)
 
 
             for color_picker in self.color_pickers:
