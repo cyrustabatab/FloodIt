@@ -8,6 +8,56 @@ pygame.display.set_caption("FLOOD IT")
 
 WHITE = (255,) * 3
 BLACK = (0,) * 3
+RED = (255,0,0)
+
+
+
+class Button(pygame.sprite.Sprite):
+
+
+    def __init__(self,x,y,button_text,button_color,text_color,font):
+        super().__init__()
+
+        
+        text=font.render(button_text,True,text_color)
+        self.original_image = pygame.Surface((text.get_width(),text.get_height() + 20))
+
+        self.original_image.fill(button_color)
+        self.original_image.blit(text,(0,0))
+        self.bigger_image = pygame.Surface((text.get_width() + 10,text.get_height() + 30))
+        self.bigger_image.blit(text,(0,10))
+        self.original_rect = self.image.get_rect(topleft=(x,y))
+        self.bigger_rect = self.bigger_image.get_rect(center=self.original_rect.center)
+        self.image = self.original_image
+        self.rect = self.original_rect
+        self.hovered_on = False
+
+
+    def update(self,point):
+
+
+        on = self.rect.collidepoint(point)
+
+
+        if not self.hovered_on and on:
+            self.hovered_on = True
+            self.rect = self.bigger_rect
+            self.image = self.bigger_image
+        elif self.hovered_on and not on:
+            self.hovered_on = False
+            self.rect = self.original_rect
+            self.image = self.original_image
+
+
+
+
+
+
+
+
+
+
+
 
 class Game:
 
@@ -86,6 +136,7 @@ class Game:
     
     title_font = pygame.font.SysFont("calibri",60,bold=True)
     text_font = pygame.font.SysFont("calibri",20)
+    button_font = pygame.font.SysFont("calibri",30)
 
 
     def __init__(self,screen_width=800,screen_height=800,rows=14,cols=14,edge_gap=20):
@@ -108,7 +159,26 @@ class Game:
         self.move_text = self.title_font.render("0/25",True,WHITE)
         y= self._generate_color_picker_squares()
         self.move_text_y = y
+
+
         self.move_text_rect = self.move_text.get_rect(center=(self.screen_width//2,y+  5+ self.move_text.get_height()//2 ))
+        self.game_over_text = self.title_font.render("GAME OVER",True,WHITE)
+        self.game_over_surface = pygame.Surface(self.game_over_text.get_size(),pygame.SRCALPHA)
+        new_game_button = Button(edge_gap,self.title_text_rect.top,"NEW GAME",RED,BLACK,self.button_font)
+        high_scores_button = Button(self.title_text_rect.right +edge_gap,self.title_text_rect.top,"TOP SCORES",RED,BLACK,self.button_font)
+        self.buttons = pygame.sprite.Group(new_game_button,high_scores_button)
+
+
+
+        self.game_over_surface.fill((255,255,255,230))
+
+        self.game_over_surface.blit(self.game_over_text,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
+
+
+
+        self.game_over = False
+
+
         self._play()
     
 
@@ -195,7 +265,7 @@ class Game:
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                if not self.game_over and event.type == pygame.MOUSEBUTTONDOWN:
                     point = pygame.mouse.get_pos()
 
                     for color_picker in self.color_pickers:
@@ -204,6 +274,8 @@ class Game:
                             self.flood_fill(color_picker.color)
                             self.moves += 1
                             self._update_moves_text()
+                            if self.moves == 25:
+                                self.game_over = True
 
 
             
@@ -218,8 +290,12 @@ class Game:
             for color_picker in self.color_pickers:
                 color_picker.draw(self.screen,point)
             
-
+            self.buttons.draw(self.screen)
             self.board.draw(self.screen)
+
+            if self.game_over:
+                self.screen.blit(self.game_over_surface,(self.screen_width//2 - self.game_over_surface.get_width()//2,self.screen_height//2 - self.game_over_surface.get_height()//2))
+
 
             pygame.display.update() 
 
