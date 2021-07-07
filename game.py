@@ -23,10 +23,11 @@ class Button(pygame.sprite.Sprite):
         self.original_image = pygame.Surface((text.get_width(),text.get_height() + 20))
 
         self.original_image.fill(button_color)
-        self.original_image.blit(text,(0,0))
+        self.original_image.blit(text,(0,10))
         self.bigger_image = pygame.Surface((text.get_width() + 10,text.get_height() + 30))
-        self.bigger_image.blit(text,(0,10))
-        self.original_rect = self.image.get_rect(topleft=(x,y))
+        self.bigger_image.fill(button_color)
+        self.bigger_image.blit(text,(5,15))
+        self.original_rect = self.original_image.get_rect(topleft=(x,y))
         self.bigger_rect = self.bigger_image.get_rect(center=self.original_rect.center)
         self.image = self.original_image
         self.rect = self.original_rect
@@ -36,7 +37,7 @@ class Button(pygame.sprite.Sprite):
     def update(self,point):
 
 
-        on = self.rect.collidepoint(point)
+        on = self.clicked_on(point)
 
 
         if not self.hovered_on and on:
@@ -49,7 +50,8 @@ class Button(pygame.sprite.Sprite):
             self.image = self.original_image
 
 
-
+    def clicked_on(self,point):
+        return self.rect.collidepoint(point)
 
 
 
@@ -63,7 +65,7 @@ class Game:
 
     
     place_sound = pygame.mixer.Sound("pop_sound.wav")
-
+    high_score_file = "high_scores.txt"
     class Square(pygame.sprite.Sprite):
 
         def __init__(self,x,y,width,height,color):
@@ -125,6 +127,12 @@ class Game:
                 for col in range(len(self.board[0])):
                     self.board[row][col].draw(screen)
         
+
+        def reset(self):
+            for row in range(len(self.board)):
+                for col in range(len(self.board[0])):
+                    self.board[row][col].update_color(random.choice(Game.COLORS))
+
 
         def update_color(self,row,col,color):
             self.board[row][col].update_color(color)
@@ -252,6 +260,12 @@ class Game:
 
 
 
+    def _reset(self):
+        self.board.reset()
+        self.moves = 0
+        self.move_text = self.title_font.render(f"{self.moves}/25",True,WHITE)
+
+
 
 
 
@@ -277,11 +291,16 @@ class Game:
                             if self.moves == 25:
                                 self.game_over = True
 
-
-            
+                    for i,button in enumerate(self.buttons): 
+                        if button.clicked_on(point):
+                            if i == 0:
+                                self._reset()
 
             point = pygame.mouse.get_pos()
+
+            self.buttons.update(point)
             self.screen.fill(Game.BGCOLOR)
+
             self.screen.blit(self.title_text,self.title_text_rect)
             self.screen.blit(self.instructions_text,self.instructions_text_rect)
             self.screen.blit(self.move_text,self.move_text_rect)
