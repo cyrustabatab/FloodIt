@@ -173,12 +173,20 @@ class Game:
         self.game_over_text = self.title_font.render("GAME OVER",True,WHITE)
         self.game_over_surface = pygame.Surface(self.game_over_text.get_size(),pygame.SRCALPHA)
         new_game_button = Button(edge_gap,self.title_text_rect.top,"NEW GAME",RED,BLACK,self.button_font)
-        high_scores_button = Button(self.title_text_rect.right +edge_gap,self.title_text_rect.top,"TOP SCORES",RED,BLACK,self.button_font)
-        self.buttons = pygame.sprite.Group(new_game_button,high_scores_button)
+        self.high_scores_button = Button(self.title_text_rect.right +edge_gap,self.title_text_rect.top,"TOP SCORES",RED,BLACK,self.button_font)
+        
 
+        self._read_high_scores()
+
+        self.high_scores_surface = pygame.Surface((self.screen_width * 3/4,self.screen_height * 3/4),flags=pygame.SRCALPHA)
+        self.high_scores_surface_rect = self.high_scores_surface.get_rect(center=(self.screen_width//2,self.screen_height//2))
+        self.high_scores_surface.fill((255,255,255,225))
+        self._update_high_scores_surface()
+        self.buttons = pygame.sprite.Group(new_game_button,self.high_scores_button)
 
 
         self.game_over_surface.fill((255,255,255,230))
+
 
         self.game_over_surface.blit(self.game_over_text,(0,0),special_flags=pygame.BLEND_RGBA_MULT)
 
@@ -189,6 +197,32 @@ class Game:
 
         self._play()
     
+
+    def _read_high_scores(self):
+        with open(self.high_score_file,'r') as f:
+            text = f.read()
+            
+        if text:
+            self.high_scores = list(map(int,f.readlines()))
+        else:
+            self.high_scores = []
+    
+    def _update_high_scores_surface(self):
+        high_score_text = self.title_font.render("HIGH SCORES",True,BLACK)
+
+        self.high_scores_surface.blit(high_score_text,(self.high_scores_surface.get_width()//2 - high_score_text.get_width()//2,10))
+        start_y = 20 + high_score_text.get_height()
+        if not self.high_scores:
+            text = self.title_font.render("NO FILLS YET!",True,BLACK)
+            self.high_scores_surface.blit(text,(self.high_scores_surface.get_width()//2 - text.get_width()//2,start_y))
+
+        else:
+        
+            gap = 5
+            for i,score in enumerate(self.high_scores):
+                text = self.title_font.render(f"{i + 1:<2}. {str(score):<2}",True,BLACK)
+                self.high_scores_surface.blit(text,(self.high_scores_surface.get_width()//2 - text.get_width()//2,start_y + (text.get_height() +gap ) * i))
+
 
     
     def _generate_board(self):
@@ -272,7 +306,9 @@ class Game:
 
     def _play(self):
 
+            
 
+        showing_stats = False
         while True:
 
             for event in pygame.event.get():
@@ -280,21 +316,31 @@ class Game:
                     pygame.quit()
                     sys.exit()
                 if not self.game_over and event.type == pygame.MOUSEBUTTONDOWN:
+
+
                     point = pygame.mouse.get_pos()
+                    
 
-                    for color_picker in self.color_pickers:
-                        if color_picker.clicked_on(point):
-                            self.place_sound.play()
-                            self.flood_fill(color_picker.color)
-                            self.moves += 1
-                            self._update_moves_text()
-                            if self.moves == 25:
-                                self.game_over = True
+                    if not showing_stats:
+                        for color_picker in self.color_pickers:
+                            if color_picker.clicked_on(point):
+                                self.place_sound.play()
+                                self.flood_fill(color_picker.color)
+                                self.moves += 1
+                                self._update_moves_text()
+                                if self.moves == 25:
+                                    self.game_over = True
 
-                    for i,button in enumerate(self.buttons): 
-                        if button.clicked_on(point):
-                            if i == 0:
-                                self._reset()
+                        for i,button in enumerate(self.buttons): 
+                            if button.clicked_on(point):
+                                if i == 0:
+                                    self._reset()
+                                else:
+                                    showing_stats = True
+                    else:
+                        if not self.high_scores_button.clicked_on(point):
+                            showing_stats = False
+
 
             point = pygame.mouse.get_pos()
 
@@ -314,6 +360,10 @@ class Game:
 
             if self.game_over:
                 self.screen.blit(self.game_over_surface,(self.screen_width//2 - self.game_over_surface.get_width()//2,self.screen_height//2 - self.game_over_surface.get_height()//2))
+
+            if showing_stats:
+                self.screen.blit(self.high_scores_surface,self.high_scores_surface_rect)
+
 
 
             pygame.display.update() 
