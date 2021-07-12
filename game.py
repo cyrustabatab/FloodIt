@@ -66,6 +66,8 @@ class Game:
     
     place_sound = pygame.mixer.Sound("pop_sound.wav")
     high_score_file = "high_scores.txt"
+    lose_sound = pygame.mixer.Sound("game_over.wav")
+
     class Square(pygame.sprite.Sprite):
 
         def __init__(self,x,y,width,height,color):
@@ -145,6 +147,8 @@ class Game:
     title_font = pygame.font.SysFont("calibri",60,bold=True)
     text_font = pygame.font.SysFont("calibri",20)
     button_font = pygame.font.SysFont("calibri",30)
+    music_file = "music.ogg"
+
 
 
     def __init__(self,screen_width=800,screen_height=800,rows=14,cols=14,edge_gap=20):
@@ -193,11 +197,15 @@ class Game:
 
 
         self.game_over = False
-
-
+        pygame.mixer.music.load(self.music_file)
         self._play()
     
 
+    def _play_music(self):
+        pygame.mixer.music.play(-1)
+    
+    def _stop_music(self):
+        pygame.mixer.music.pause()
     def _read_high_scores(self):
         with open(self.high_score_file,'r') as f:
             text = f.read()
@@ -298,6 +306,8 @@ class Game:
         self.board.reset()
         self.moves = 0
         self.move_text = self.title_font.render(f"{self.moves}/25",True,WHITE)
+        self.game_over = False
+        self._play_music()
 
 
 
@@ -307,15 +317,16 @@ class Game:
     def _play(self):
 
             
-
+        
         showing_stats = False
+        self._play_music()
         while True:
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
                     sys.exit()
-                if not self.game_over and event.type == pygame.MOUSEBUTTONDOWN:
+                if event.type == pygame.MOUSEBUTTONDOWN:
 
 
                     point = pygame.mouse.get_pos()
@@ -329,6 +340,8 @@ class Game:
                                 self.moves += 1
                                 self._update_moves_text()
                                 if self.moves == 25:
+                                    self._stop_music()
+                                    self.lose_sound.play()
                                     self.game_over = True
 
                         for i,button in enumerate(self.buttons): 
